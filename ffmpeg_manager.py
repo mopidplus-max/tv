@@ -22,6 +22,27 @@ from utils import clamp, get_logger, now_local, parse_float, run_command
 
 logger = get_logger("ffmpeg")
 
+# Containers that are always a finished file, never a live stream. Some old
+# file hosts do not report a duration (no Content-Length, broken headers), and
+# FFprobe then marks the source as live; without this hint such a file would be
+# read at full speed instead of real time.
+VOD_EXTENSIONS = (
+    ".mp4",
+    ".m4v",
+    ".mkv",
+    ".webm",
+    ".mov",
+    ".avi",
+    ".mpg",
+    ".mpeg",
+    ".flv",
+    ".wmv",
+    ".m2ts",
+)
+
+# FFprobe format names that mean "a file", not an HLS/live playlist.
+VOD_FORMATS = ("mp4", "mov", "matroska", "webm", "avi", "flv", "asf", "mpeg")
+
 
 class FFmpegError(RuntimeError):
     pass
@@ -101,6 +122,32 @@ class StreamSpec:
         if self.has_audio_override is not None:
             return self.has_audio_override
         return bool(self.probe and self.probe.has_audio)
+
+
+def is_static_media_url(url: str, probe: ProbeResult | None = None) -> bool:
+    """True when a remote URL points to a finished file rather than a live stream."""
+    if not url:
+        return False
+    lowered = url.lower().split("?", 1)[0].split("#", 1)[0]
+    if lowered.endswith(".m3u8") or "m3u8" in lowered:
+        return False
+    if probe is not None and "hls" in (probe.format_name or "").lower():
+        return False
+    if lowered.endswith(VOD_EXTENSIONS):
+        return True
+    if probe is not None:
+        format_name = (probe.format_name or "").lower()
+        return any(name in format_name for name in VOD_FORMATS)
+    return False
+
+
+def estimate_duration(size: int, bit_rate: int) -> float | None:
+    """Best-effort duration for sources whose container has no duration tag."""
+    if size and size > 0 and bit_rate and bit_rate > 0:
+        seconds = size * 8 / bit_rate
+        if seconds > 0:
+            return round(seconds, 3)
+    return None
 
 
 class FFmpegProcess:
@@ -395,6 +442,12 @@ class FFmpegManager:
         )
         if duration is not None and duration <= 0:
             duration = None
+        size = int(parse_float(fmt.get("size"), 0))
+        bit_rate = int(parse_float(fmt.get("bit_rate"), 0))
+        if duration is None and remote:
+            # Old file hosts often omit the duration tag; size and bitrate are
+            # usually still there and are enough for a progress bar.
+            duration = estimate_duration(size, bit_rate)
         width = int(video.get("width") or 0) if video else 0
         height = int(video.get("height") or 0) if video else 0
         aspect = (video.get("display_aspect_ratio") or "") if video else ""
@@ -414,8 +467,8 @@ class FFmpegManager:
             pix_fmt=str(video.get("pix_fmt") or "") if video else "",
             sample_rate=int(audio.get("sample_rate") or 0) if audio else 0,
             format_name=str(fmt.get("format_name") or ""),
-            bit_rate=int(parse_float(fmt.get("bit_rate"), 0)),
-            size=int(parse_float(fmt.get("size"), 0)),
+            bit_rate=bit_rate,
+            size=size,
             is_live=bool(remote and duration is None),
         )
 

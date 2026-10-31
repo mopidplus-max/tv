@@ -268,6 +268,28 @@ def test_program_move_normalises_duplicate_positions(client, app):
         assert [row.position for row in rows] == [0, 1, 2]
 
 
+def test_static_media_detection_and_duration_estimate():
+    from ffmpeg_manager import ProbeResult, estimate_duration, is_static_media_url
+
+    # A finished file, even when the host hides the duration.
+    assert is_static_media_url("https://3.ntv.ru/upload/123/movie.mp4")
+    assert is_static_media_url("https://3.ntv.ru/files/movie.MKV?token=abc")
+    assert is_static_media_url(
+        "https://3.ntv.ru/download/42", ProbeResult(format_name="mov,mp4,m4a,3gp,3g2,mj2")
+    )
+    # Live sources must stay live.
+    assert not is_static_media_url("https://example.com/live/index.m3u8")
+    assert not is_static_media_url(
+        "https://example.com/live", ProbeResult(format_name="hls")
+    )
+    assert not is_static_media_url("https://example.com/stream")
+
+    # 100 MB at 1 Mbit/s ≈ 800 s.
+    assert estimate_duration(100 * 1024 * 1024, 1_000_000) == pytest.approx(838.86, rel=1e-3)
+    assert estimate_duration(0, 1_000_000) is None
+    assert estimate_duration(1024, 0) is None
+
+
 def test_audio_only_probe_and_save(app):
     import wave
     from io import BytesIO

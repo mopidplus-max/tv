@@ -12,7 +12,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from flask import Flask
 from sqlalchemy import select
@@ -35,7 +35,14 @@ from database import (
     program_by_id,
     save_playback_state,
 )
-from ffmpeg_manager import FFmpegError, FFmpegProcess, ProbeResult, StreamSpec, ffmpeg_manager
+from ffmpeg_manager import (
+    FFmpegError,
+    FFmpegProcess,
+    ProbeResult,
+    StreamSpec,
+    ffmpeg_manager,
+    is_static_media_url,
+)
 from security import SecurityError, safe_join, validate_hls_playlist, validate_public_url
 from stream_manager import stream_manager
 from utils import clean_text, get_logger, now_local
@@ -595,6 +602,11 @@ class BroadcastEngine:
                 logger.warning("FFprobe не смог прочитать %s: %s", url, exc)
             duration = probe.duration if probe else media.duration
             is_live = bool(probe.is_live) if probe else not bool(duration)
+            if is_live and is_static_media_url(url, probe):
+                # Old file hosts sometimes hide the duration. A finished file
+                # must still be throttled to real time, not streamed at once.
+                logger.info("Источник %s выглядит как файл без длительности — играю как VOD", url)
+                is_live = False
             return StreamSpec(
                 source=url,
                 source_kind="url",
@@ -806,12 +818,20 @@ class BroadcastEngine:
                 self._clear_process()
             self._sleep(2)
 
+    def _has_playable_program(self) -> bool:
+        """True when at least one enabled programme has something to play."""
+        try:
+            return any(program.items for program in enabled_programs())
+        except Exception:  # pragma: no cover - defensive, DB hiccup
+            logger.exception("Не удалось проверить доступные передачи")
+            return False
+
     def _standby_loop(self) -> None:
         log_event("broadcast", "Нет доступных передач — режим ожидания")
         while not self._stop.is_set():
             if self._mode() != "on":
                 return
-            if enabled_programs():
+            if self._has_playable_program():
                 return
             try:
                 spec = self._standby_spec()
@@ -830,9 +850,20 @@ class BroadcastEngine:
                 )
                 process = ffmpeg_manager.start(spec, label="standby")
                 self._set_process(process)
-                outcome = self._wait_process(process, None, expected_mode="on")
+                outcome = self._wait_process(
+                    process,
+                    None,
+                    expected_mode="on",
+                    wake_when=self._has_playable_program,
+                )
                 self._clear_process(process)
                 if outcome in {"stop", "mode"}:
+                    return
+                if outcome == "wake":
+                    # Content appeared while the standby card was playing:
+                    # hand control back so the live loop picks it up.
+                    self._clear_controls()
+                    log_event("broadcast", "Появился контент — выход из режима ожидания")
                     return
                 if outcome in {"skip", "restart", "next_program", "override"}:
                     self._clear_controls()
@@ -1035,6 +1066,7 @@ class BroadcastEngine:
         duration: float | None,
         expected_mode: str,
         max_seconds: float | None = None,
+        wake_when: Callable[[], bool] | None = None,
     ) -> str:
         deadline = time.monotonic() + max_seconds if max_seconds else None
         while process.running:
@@ -1064,6 +1096,10 @@ class BroadcastEngine:
                 if process._suspended:
                     process.resume()
                 self._set_status(state=self._state_for_phase(), paused=False)
+            # Standby uses this to wake up as soon as content appears.
+            if wake_when is not None and wake_when():
+                process.terminate()
+                return "wake"
             if deadline and time.monotonic() >= deadline:
                 process.terminate()
                 return "ended"
