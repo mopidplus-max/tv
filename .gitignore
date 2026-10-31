@@ -1,6 +1,21 @@
 __pycache__/
 *.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Secrets and local state — never commit these.
 .env
+.secret_key
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Runtime data.
+hls/
+logs/
+storage/
 data/
 tools/
+start.bat
