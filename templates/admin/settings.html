@@ -1,0 +1,159 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — настройки канала{% endblock %}
+{% block eyebrow %}Система{% endblock %}
+{% block page_title %}Настройки канала{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Параметры эфира, логотип, файлы профилактики и безопасность панели. Изменения применяются к общему HLS-потоку.</p></div>
+  <div class="lead-actions">
+    <a class="btn btn-ghost" href="{{ base_url }}/playlist.m3u" target="_blank" rel="noopener"><svg class="icon"><use href="#i-download"/></svg>M3U</a>
+    <a class="btn btn-primary" href="{{ url_for('admin.preview') }}"><svg class="icon"><use href="#i-play"/></svg>Предпросмотр</a>
+  </div>
+</section>
+
+<section class="card mode-card">
+  <div class="card-head">
+    <div><span class="eyebrow">Режим вещания</span><h2>Состояние канала</h2></div>
+    <span class="mode-badge mode-{{ settings.channel_mode }}"><span class="dot"></span>{{ mode_label.get(settings.channel_mode, settings.channel_mode) }}</span>
+  </div>
+  <div class="mode-options">
+    {% for value, label, hint in [('on','В эфире','Обычное вещание передач'),('maintenance','Профилактика','Заставка, видео или изображение с музыкой'),('off','Выключен','Поток останавливается')] %}
+      <form method="post" action="{{ url_for('admin.settings_mode') }}" class="mode-option {{ 'is-active' if settings.channel_mode == value }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="mode" value="{{ value }}">
+        <input type="hidden" name="next" value="{{ url_for('admin.settings_page') }}">
+        <button type="submit">
+          <span class="mode-dot mode-{{ value }}"></span>
+          <strong>{{ label }}</strong>
+          <small>{{ hint }}</small>
+        </button>
+      </form>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="settings-grid">
+  <section class="card form-card">
+    <div class="card-head"><div><span class="eyebrow">Основное</span><h2>Канал и выход</h2></div></div>
+    <form method="post" action="{{ url_for('admin.settings_general') }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-row">
+        <label class="field grow"><span>Название канала</span><input type="text" name="channel_name" value="{{ settings.channel_name }}" maxlength="80" required></label>
+        <label class="field grow"><span>ID канала</span><input type="text" name="channel_id" value="{{ settings.channel_id }}" maxlength="40" pattern="[A-Za-z0-9_-]+"><small class="field-hint">Для M3U и EPG.</small></label>
+      </div>
+      <label class="field"><span>Описание</span><textarea name="channel_description" rows="2" maxlength="1000">{{ settings.channel_description }}</textarea></label>
+      <label class="field"><span>Публичный адрес</span><input type="url" name="public_base_url" value="{{ settings.public_base_url }}" placeholder="http://127.0.0.1:5000"><small class="field-hint">Используется в M3U и EPG. Пусто — адрес берётся из запроса.</small></label>
+      <div class="form-row three">
+        <label class="field"><span>Ширина</span><input type="number" name="output_width" value="{{ settings.output_width }}" min="320" max="1920" required></label>
+        <label class="field"><span>Высота</span><input type="number" name="output_height" value="{{ settings.output_height }}" min="180" max="1080" required></label>
+        <label class="field"><span>FPS</span><input type="number" name="output_fps" value="{{ settings.output_fps }}" min="15" max="60" required></label>
+      </div>
+      <div class="form-row">
+        <label class="field grow"><span>Видеобитрейт</span><input type="text" name="video_bitrate" value="{{ settings.video_bitrate }}" pattern="[0-9]{3,5}k" required></label>
+        <label class="field grow"><span>Аудиобитрейт</span><input type="text" name="audio_bitrate" value="{{ settings.audio_bitrate }}" pattern="[0-9]{2,4}k" required></label>
+      </div>
+      <div class="form-row">
+        <label class="field grow"><span>Длина HLS-сегмента, с</span><input type="number" name="hls_time" value="{{ settings.hls_time }}" min="1" max="10" required></label>
+        <label class="field grow"><span>Сегментов в плейлисте</span><input type="number" name="hls_list_size" value="{{ settings.hls_list_size }}" min="3" max="30" required></label>
+        <label class="field grow"><span>Повторы при ошибке</span><input type="number" name="max_retries" value="{{ settings.max_retries }}" min="0" max="5" required></label>
+      </div>
+      <div class="form-row">
+        <label class="field grow"><span>Длительность передачи по умолчанию, мин</span><input type="number" name="default_program_minutes" value="{{ settings.default_program_minutes }}" min="1" max="1440" required></label>
+        <label class="field grow"><span>Текст ожидания</span><input type="text" name="standby_text" value="{{ settings.standby_text }}" maxlength="200"></label>
+      </div>
+      <label class="field"><span>Сообщение профилактики</span><textarea name="maintenance_message" rows="2" maxlength="500">{{ settings.maintenance_message }}</textarea></label>
+      <label class="checkbox-field"><input type="checkbox" name="respect_schedule" value="1" {{ 'checked' if settings.respect_schedule }}><span>Следовать расписанию (иначе — автоматическая ротация)</span></label>
+      <label class="checkbox-field"><input type="checkbox" name="logo_enabled" value="1" {{ 'checked' if settings.logo_enabled }}><span>Показывать логотип в эфире</span></label>
+      <div class="form-actions"><button class="btn btn-primary" type="submit">Сохранить настройки</button></div>
+    </form>
+  </section>
+
+  <aside class="settings-side">
+    <section class="card">
+      <div class="card-head">
+        <div><span class="eyebrow">Логотип</span><h2>342 × 74 PNG</h2></div>
+        <span class="badge {{ 'badge-success' if settings.logo_file else 'badge-muted' }}">{{ 'Загружен' if settings.logo_file else 'Нет' }}</span>
+      </div>
+      <div class="logo-preview">
+        <img src="{{ url_for('public.logo') }}" alt="Логотип канала" width="342" height="74">
+      </div>
+      <p class="field-hint">Прозрачный PNG строго 342×74. В эфире масштабируется и размещается справа сверху без растяжения.</p>
+      <form method="post" action="{{ url_for('admin.settings_logo') }}" enctype="multipart/form-data" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field"><span>Новый логотип</span><input type="file" name="logo" accept="image/png" required></label>
+        <button class="btn btn-primary btn-block" type="submit"><svg class="icon"><use href="#i-upload"/></svg>Загрузить</button>
+      </form>
+      <div class="inline-actions">
+        <form method="post" action="{{ url_for('admin.settings_logo_toggle') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-sm" type="submit">{{ 'Скрыть' if settings.logo_enabled else 'Показать' }} логотип</button>
+        </form>
+        {% if settings.logo_file %}
+          <form method="post" action="{{ url_for('admin.settings_logo_delete') }}" data-confirm="Удалить логотип?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+          </form>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Профилактика</span><h2>Медиа ожидания</h2></div></div>
+      <p class="field-hint">Приоритет: видео → изображение + музыка → заставка. Видео и музыка зацикливаются.</p>
+      {% for asset, title, accept, current in [
+        ('image','Изображение','image/png,image/jpeg,image/webp', settings.maintenance_image),
+        ('video','Видео','video/mp4,video/x-matroska,video/webm,video/quicktime', settings.maintenance_video),
+        ('music','Музыка','audio/mpeg,audio/wav,audio/ogg,audio/flac,audio/mp4', settings.maintenance_music)
+      ] %}
+        <div class="asset-row">
+          <div class="asset-main">
+            <strong>{{ title }}</strong>
+            <small>{{ current if current else 'не загружено' }}</small>
+          </div>
+          <form method="post" action="{{ url_for('admin.settings_maintenance_upload', asset=asset) }}" enctype="multipart/form-data" class="asset-upload">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="file" name="file" accept="{{ accept }}" required aria-label="Файл: {{ title }}">
+            <button class="icon-btn" type="submit" title="Загрузить"><svg class="icon"><use href="#i-upload"/></svg></button>
+          </form>
+          {% if current %}
+            <form method="post" action="{{ url_for('admin.settings_maintenance_delete', asset=asset) }}" data-confirm="Удалить файл профилактики?">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="icon-btn danger" type="submit" title="Удалить"><svg class="icon"><use href="#i-trash"/></svg></button>
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <form method="post" action="{{ url_for('admin.settings_maintenance_music_toggle') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-sm" type="submit">{{ 'Выключить' if settings.maintenance_music_enabled else 'Включить' }} музыку профилактики</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Диагностика</span><h2>Компоненты</h2></div></div>
+      <div class="status-list">
+        {% for key, label in [('ffmpeg','FFmpeg'),('ffprobe','FFprobe'),('ytdlp','yt-dlp')] %}
+          <div><span>{{ label }}</span><strong class="{{ 'text-success' if binaries[key].ok else 'text-danger' }}">{{ binaries[key].version }}</strong></div>
+        {% endfor %}
+        <div><span>Движок</span><strong>{{ engine_status.get('state', '—') }}</strong></div>
+        <div><span>HLS</span><strong>{{ 'готов' if engine_status.get('hls_ready') else 'нет' }}</strong></div>
+      </div>
+      <form method="post" action="{{ url_for('admin.settings_engine_restart') }}" data-confirm="Перезапустить эфирный движок? Поток прервётся на несколько секунд.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-block" type="submit"><svg class="icon"><use href="#i-restart"/></svg>Перезапустить движок</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Безопасность</span><h2>Смена пароля</h2></div></div>
+      <form method="post" action="{{ url_for('admin.settings_password') }}" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field"><span>Текущий пароль</span><input type="password" name="old_password" autocomplete="current-password" required></label>
+        <label class="field"><span>Новый пароль</span><input type="password" name="new_password" autocomplete="new-password" minlength="12" required><small class="field-hint">Минимум 12 символов. Хранится как Argon2id.</small></label>
+        <button class="btn btn-primary btn-block" type="submit">Изменить пароль</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

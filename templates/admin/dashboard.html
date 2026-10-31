@@ -1,0 +1,183 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — главная{% endblock %}
+{% block eyebrow %}Панель канала{% endblock %}
+{% block page_title %}Добро пожаловать! 🤗{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div>
+    <p class="muted">Всё, что происходит в эфире — на одном экране. Данные обновляются автоматически.</p>
+  </div>
+  <div class="lead-actions">
+    <a class="btn btn-primary" href="{{ url_for('admin.preview') }}"><svg class="icon"><use href="#i-play"/></svg>Предпросмотр</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin.test_page') }}"><svg class="icon"><use href="#i-test"/></svg>Тестовый эфир</a>
+  </div>
+</section>
+
+<section class="quick-links">
+  <a class="quick-link" href="{{ url_for('public.playlist') }}" target="_blank" rel="noopener">
+    <span class="quick-icon"><svg class="icon"><use href="#i-download"/></svg></span>
+    <span><strong>M3U Playlist</strong><small>Ссылка для IPTV-плееров</small></span>
+    <svg class="icon chevron"><use href="#i-chevron"/></svg>
+  </a>
+  <a class="quick-link" href="{{ url_for('public.epg_xml') }}" target="_blank" rel="noopener">
+    <span class="quick-icon"><svg class="icon"><use href="#i-calendar"/></svg></span>
+    <span><strong>EPG XML</strong><small>Телепрограмма XMLTV</small></span>
+    <svg class="icon chevron"><use href="#i-chevron"/></svg>
+  </a>
+  <a class="quick-link" href="{{ url_for('public.epg_gz') }}" target="_blank" rel="noopener">
+    <span class="quick-icon"><svg class="icon"><use href="#i-download"/></svg></span>
+    <span><strong>EPG XML.GZ</strong><small>Сжатая телепрограмма</small></span>
+    <svg class="icon chevron"><use href="#i-chevron"/></svg>
+  </a>
+  <a class="quick-link" href="{{ url_for('public.index') }}" target="_blank" rel="noopener">
+    <span class="quick-icon"><svg class="icon"><use href="#i-tv"/></svg></span>
+    <span><strong>Открыть канал</strong><small>Публичная страница эфира</small></span>
+    <svg class="icon chevron"><use href="#i-chevron"/></svg>
+  </a>
+  <a class="quick-link" href="{{ url_for('public.tv_guide') }}" target="_blank" rel="noopener">
+    <span class="quick-icon"><svg class="icon"><use href="#i-clock"/></svg></span>
+    <span><strong>Телепрограмма</strong><small>Расписание на 7 дней</small></span>
+    <svg class="icon chevron"><use href="#i-chevron"/></svg>
+  </a>
+</section>
+
+<section class="stat-grid">
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-tv"/></svg>Канал</span>
+    <strong class="stat-value" data-live="mode">{{ mode_label.get(mode, mode) }}</strong>
+    <small class="stat-sub">Режим вещания</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-activity"/></svg>Движок</span>
+    <strong class="stat-value" data-live="engine-state">{{ status.get('state', '—') }}</strong>
+    <small class="stat-sub" data-live="engine-sub">{{ 'FFmpeg работает' if status.get('ffmpeg_running') else 'FFmpeg ожидает' }}</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-users"/></svg>Зрители</span>
+    <strong class="stat-value" data-live="viewers">{{ status.get('viewers', 0) }}</strong>
+    <small class="stat-sub">Активные подключения</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-cpu"/></svg>CPU</span>
+    <strong class="stat-value" data-live="cpu">{{ metrics.cpu }}%</strong>
+    <div class="meter"><span data-live-bar="cpu" style="width: {{ metrics.cpu }}%"></span></div>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-memory"/></svg>RAM</span>
+    <strong class="stat-value" data-live="memory">{{ metrics.memory_percent }}%</strong>
+    <small class="stat-sub">{{ metrics.memory_used_label }} из {{ metrics.memory_total_label }}</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-disk"/></svg>Диск</span>
+    <strong class="stat-value" data-live="disk">{{ metrics.disk_percent }}%</strong>
+    <small class="stat-sub">{{ metrics.disk_free_label }} свободно</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-film"/></svg>FFmpeg</span>
+    <strong class="stat-value" data-live="ffmpeg">{{ metrics.ffmpeg_processes }}</strong>
+    <small class="stat-sub">процессов</small>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label"><svg class="icon"><use href="#i-server"/></svg>HLS</span>
+    <strong class="stat-value" data-live="segments">{{ metrics.hls_segments }}</strong>
+    <small class="stat-sub">{{ metrics.hls_size_label }} · {{ metrics.uptime_label }}</small>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="card current-card">
+    <div class="card-head">
+      <div>
+        <span class="eyebrow">Сейчас в эфире</span>
+        <h2 data-live="program-title">{{ current.title if current else (status.get('program_title') or 'Ожидание эфира') }}</h2>
+      </div>
+      <span class="live-chip"><span class="dot"></span>LIVE</span>
+    </div>
+    <p class="muted" data-live="program-description">{{ current.description if current else (status.get('program_description') or 'Добавьте передачу, чтобы начать вещание.') }}</p>
+    <div class="progress-block">
+      <div class="progress-meta">
+        <span data-live="program-time">
+          {% if current and current.start %}{{ fmt_time(current.start|string|to_datetime) }} — {{ fmt_time(current.end|string|to_datetime) }}{% elif status.get('program_started_at') %}{{ fmt_time(status.get('program_started_at')|to_datetime) }}{% else %}—{% endif %}
+        </span>
+        <span data-live="progress-label">{{ status.get('program_progress', 0) }}%</span>
+      </div>
+      <div class="progress"><span data-live-bar="program" style="width: {{ status.get('program_progress', 0) }}%"></span></div>
+    </div>
+    <div class="meta-grid">
+      <div><span class="meta-label">Текущий ролик</span><strong data-live="media-title">{{ status.get('media_title') or '—' }}</strong></div>
+      <div><span class="meta-label">Элемент</span><strong data-live="item-index">{{ status.get('item_index', 0) + 1 }} / {{ status.get('items_total', 0) }}</strong></div>
+      <div><span class="meta-label">Начало</span><strong data-live="program-start">{{ fmt_time(status.get('program_started_at')|to_datetime) if status.get('program_started_at') else '—' }}</strong></div>
+      <div><span class="meta-label">Окончание</span><strong data-live="program-end">{{ fmt_time(status.get('program_ends_at')|to_datetime) if status.get('program_ends_at') else '—' }}</strong></div>
+    </div>
+  </article>
+
+  <article class="card director-card">
+    <div class="card-head">
+      <div><span class="eyebrow">Режиссёрская панель</span><h2>Управление эфиром</h2></div>
+      <span class="pill" data-live="director-state">{{ status.get('state', '—') }}</span>
+    </div>
+    <div class="director-grid">
+      <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_pause') }}"><svg class="icon"><use href="#i-pause"/></svg>Пауза</button>
+      <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_resume') }}"><svg class="icon"><use href="#i-play"/></svg>Продолжить</button>
+      <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_skip') }}"><svg class="icon"><use href="#i-skip"/></svg>Пропустить</button>
+      <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_restart') }}"><svg class="icon"><use href="#i-restart"/></svg>Перезапустить</button>
+      <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_next_program') }}"><svg class="icon"><use href="#i-next"/></svg>Следующая передача</button>
+    </div>
+    <div class="field">
+      <label for="next-item">Выбрать следующий ролик</label>
+      <div class="inline-control">
+        <select id="next-item" data-next-item-select>
+          {% for item in current_items %}
+            <option value="{{ item.id }}">{{ loop.index }}. {{ item.media.title if item.media else 'Без медиа' }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary" type="button" data-play-item="{{ url_for('admin.director_play_item') }}">В эфир</button>
+      </div>
+    </div>
+    <div class="director-meta">
+      <span>Прогресс <strong data-live="progress-label">{{ status.get('progress', 0) }}%</strong></span>
+      <span>Осталось <strong data-live="remaining">{{ fmt_duration(status.get('remaining')) if status.get('remaining') else '—' }}</strong></span>
+      <span>HLS <strong data-live="hls">{{ 'готов' if status.get('hls_ready') else 'нет' }}</strong></span>
+    </div>
+  </article>
+
+  <article class="card next-card">
+    <div class="card-head">
+      <div><span class="eyebrow">Далее</span><h2 data-live="next-title">{{ following.title if following else (status.get('next_program_title') or '—') }}</h2></div>
+      <svg class="icon muted-icon"><use href="#i-clock"/></svg>
+    </div>
+    <p class="muted" data-live="next-description">{{ following.description if following else 'Следующая передача появится здесь.' }}</p>
+    <div class="meta-grid">
+      <div><span class="meta-label">Начало</span><strong data-live="next-start">{{ fmt_time(following.start|string|to_datetime) if following and following.start else '—' }}</strong></div>
+      <div><span class="meta-label">Конец</span><strong data-live="next-end">{{ fmt_time(following.end|string|to_datetime) if following and following.end else '—' }}</strong></div>
+    </div>
+    <a class="btn btn-ghost btn-block" href="{{ url_for('admin.schedule_page') }}"><svg class="icon"><use href="#i-calendar"/></svg>Открыть телепрограмму</a>
+  </article>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><span class="eyebrow">Последние события</span><h2>Журнал эфира</h2></div>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.logs_page') }}">Весь журнал<svg class="icon"><use href="#i-chevron"/></svg></a>
+  </div>
+  {% if events %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Время</th><th>Тип</th><th>Событие</th></tr></thead>
+        <tbody>
+          {% for event in events %}
+            <tr>
+              <td class="nowrap">{{ fmt_dt(event.created_at, '%d.%m %H:%M:%S') }}</td>
+              <td><span class="badge badge-{{ event.level }}">{{ event.category }}</span></td>
+              <td>{{ event.message }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state"><svg class="icon"><use href="#i-log"/></svg><p>Журнал пока пуст. События появятся после запуска эфира.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

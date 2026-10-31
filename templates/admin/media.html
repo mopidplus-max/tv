@@ -1,0 +1,121 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — медиатека{% endblock %}
+{% block eyebrow %}Контент{% endblock %}
+{% block page_title %}Медиатека{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Все локальные файлы и интернет-источники. Для ссылок yt-dlp хранится только адрес страницы — видео не скачивается.</p></div>
+  <div class="lead-actions">
+    <button class="btn btn-ghost" type="button" data-toggle-panel="add-url-panel"><svg class="icon"><use href="#i-link"/></svg>Добавить ссылку</button>
+    <button class="btn btn-primary" type="button" data-toggle-panel="upload-panel"><svg class="icon"><use href="#i-upload"/></svg>Загрузить видео</button>
+  </div>
+</section>
+
+<section class="panel-grid">
+  <article class="card form-card hidden" id="add-url-panel">
+    <div class="card-head"><div><span class="eyebrow">Интернет-источник</span><h2>Добавить ссылку</h2></div></div>
+    <form method="post" action="{{ url_for('admin.media_add_url') }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field"><span>URL</span><input type="url" name="url" required placeholder="https://…"><small class="field-hint">yt-dlp извлекает прямой URL, FFmpeg читает его по сети. Оригинал не сохраняется.</small></label>
+      <div class="form-row">
+        <label class="field grow"><span>Название</span><input type="text" name="title" maxlength="300" placeholder="Необязательно"></label>
+        <label class="field grow"><span>Категория</span><input type="text" name="category" maxlength="80" placeholder="Музыка"></label>
+      </div>
+      <label class="field"><span>Теги</span><input type="text" name="tags" maxlength="300" placeholder="клип, 2026"></label>
+      <button class="btn btn-primary" type="submit">Проверить и добавить</button>
+    </form>
+  </article>
+
+  <article class="card form-card hidden" id="upload-panel">
+    <div class="card-head"><div><span class="eyebrow">Локальный файл</span><h2>Загрузить видео</h2></div></div>
+    <form method="post" action="{{ url_for('admin.media_upload') }}" enctype="multipart/form-data" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field"><span>Видеофайл</span><input type="file" name="video" accept="video/mp4,video/x-matroska,video/webm,video/quicktime,video/x-msvideo,.mkv,.mp4,.webm,.mov,.m4v,.avi,.ts" required></label>
+      <div class="form-row">
+        <label class="field grow"><span>Название</span><input type="text" name="title" maxlength="300" placeholder="По имени файла"></label>
+        <label class="field grow"><span>Категория</span><input type="text" name="category" maxlength="80" placeholder="Документальное"></label>
+      </div>
+      <label class="field"><span>Теги</span><input type="text" name="tags" maxlength="300" placeholder="эфир, архив"></label>
+      <button class="btn btn-primary" type="submit">Загрузить</button>
+    </form>
+  </article>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><span class="eyebrow">Хранилище</span><h2>Источники <span class="count-badge">{{ media_rows|length }}</span></h2></div>
+    <form method="get" class="filter-form">
+      <div class="search-input"><svg class="icon"><use href="#i-search"/></svg><input type="search" name="q" value="{{ q }}" placeholder="Поиск по названию или тегам"></div>
+      <select name="source" aria-label="Тип источника">
+        <option value="">Все типы</option>
+        <option value="local" {{ 'selected' if source == 'local' }}>Файлы</option>
+        <option value="url" {{ 'selected' if source == 'url' }}>Ссылки</option>
+        <option value="hls" {{ 'selected' if source == 'hls' }}>HLS</option>
+        <option value="ytdlp" {{ 'selected' if source == 'ytdlp' }}>yt-dlp</option>
+      </select>
+      <select name="category" aria-label="Категория">
+        <option value="">Все категории</option>
+        {% for item in categories %}<option value="{{ item }}" {{ 'selected' if category == item }}>{{ item }}</option>{% endfor %}
+      </select>
+      <select name="sort" aria-label="Сортировка">
+        <option value="new" {{ 'selected' if sort == 'new' }}>Сначала новые</option>
+        <option value="old" {{ 'selected' if sort == 'old' }}>Сначала старые</option>
+        <option value="title" {{ 'selected' if sort == 'title' }}>По названию</option>
+        <option value="duration" {{ 'selected' if sort == 'duration' }}>По длительности</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" type="submit"><svg class="icon"><use href="#i-filter"/></svg>Фильтр</button>
+    </form>
+  </div>
+
+  {% if media_rows %}
+    <div class="table-wrap">
+      <table class="data-table media-table">
+        <thead><tr><th>Источник</th><th>Тип</th><th>Длительность</th><th>Разрешение</th><th>Категория</th><th>Добавлен</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+          {% for media in media_rows %}
+            <tr>
+              <td>
+                <div class="table-title">
+                  <span class="type-icon type-{{ media.source_type }}"><svg class="icon"><use href="#i-{{ 'film' if media.source_type == 'local' else ('link' if media.source_type in ['url','hls'] else 'download') }}"/></svg></span>
+                  <div><strong>{{ media.title }}</strong><small>{% if media.category %}{{ media.category }}{% endif %}{% if media.tags %} · {{ media.tags }}{% endif %}{% if not media.category and not media.tags %}Без категории{% endif %}</small></div>
+                </div>
+              </td>
+              <td><span class="badge">{{ media.source_label }}</span></td>
+              <td class="nowrap">{{ media.duration_label }}</td>
+              <td class="nowrap">{{ media.resolution_label }}</td>
+              <td>{{ media.category or '—' }}</td>
+              <td class="nowrap">{{ fmt_dt(media.created_at, '%d.%m.%Y') }}</td>
+              <td><span class="badge badge-{{ 'success' if media.status == 'ok' else ('error' if media.status == 'error' else 'muted') }}">{{ 'OK' if media.status == 'ok' else ('Ошибка' if media.status == 'error' else media.status) }}</span></td>
+              <td class="actions-cell">
+                <button class="icon-btn" type="button" title="Предпросмотр" data-preview-url="{{ url_for('admin.media_preview', media_id=media.id) }}" data-preview-kind="{{ media.source_type }}" data-preview-title="{{ media.title }}"><svg class="icon"><use href="#i-eye"/></svg></button>
+                <a class="icon-btn" href="{{ url_for('admin.media_edit', media_id=media.id) }}" title="Изменить"><svg class="icon"><use href="#i-edit"/></svg></a>
+                <form method="post" action="{{ url_for('admin.media_check', media_id=media.id) }}" class="inline-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="icon-btn" type="submit" title="Проверить доступность"><svg class="icon"><use href="#i-refresh"/></svg></button>
+                </form>
+                <form method="post" action="{{ url_for('admin.media_delete', media_id=media.id) }}" class="inline-form" data-confirm="Удалить источник «{{ media.title }}»?">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="icon-btn danger" type="submit" title="{{ 'Используется в передачах' if usage.get(media.id) else 'Удалить' }}"><svg class="icon"><use href="#i-trash"/></svg></button>
+                </form>
+                {% if usage.get(media.id) %}<span class="usage-hint" title="Используется в передачах">{{ usage.get(media.id) }}×</span>{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state"><svg class="icon"><use href="#i-library"/></svg><p>Источники не найдены. Добавьте ссылку или загрузите видео.</p></div>
+  {% endif %}
+</section>
+
+<dialog class="modal" id="preview-dialog">
+  <div class="modal-head"><strong data-preview-title>Предпросмотр</strong><button class="icon-btn" type="button" data-close-dialog><svg class="icon"><use href="#i-x"/></svg></button></div>
+  <div class="modal-body"><video id="preview-video" controls playsinline preload="metadata"></video></div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/hls.min.js') }}"></script>
+{% endblock %}

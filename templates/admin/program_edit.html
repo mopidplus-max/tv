@@ -1,0 +1,110 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — {{ program.title }}{% endblock %}
+{% block eyebrow %}Контент / передача{% endblock %}
+{% block page_title %}{{ program.title }}{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div>
+    <p class="muted">Шаг 2 из 2. Видео воспроизводятся сверху вниз. Перетащите строки, чтобы изменить порядок.</p>
+  </div>
+  <div class="lead-actions">
+    <a class="btn btn-ghost" href="{{ url_for('admin.programs') }}">К передачам</a>
+    <a class="btn btn-ghost" href="{{ url_for('admin.preview') }}"><svg class="icon"><use href="#i-play"/></svg>Предпросмотр эфира</a>
+  </div>
+</section>
+
+<div class="edit-layout">
+  <div class="edit-main">
+    <section class="card form-card">
+      <div class="card-head"><div><span class="eyebrow">Параметры</span><h2>Описание передачи</h2></div><span class="badge {{ 'badge-success' if program.enabled else 'badge-muted' }}">{{ 'Активна' if program.enabled else 'Выключена' }}</span></div>
+      <form method="post" action="{{ url_for('admin.program_update', program_id=program.id) }}" enctype="multipart/form-data" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-row">
+          <label class="field grow"><span>Название</span><input type="text" name="title" value="{{ program.title }}" maxlength="300" required></label>
+          <label class="checkbox-field"><input type="checkbox" name="enabled" value="1" {{ 'checked' if program.enabled }}><span>Показывать в эфире</span></label>
+        </div>
+        <label class="field"><span>Описание</span><textarea name="description" rows="3" maxlength="4000">{{ program.description }}</textarea></label>
+        <div class="form-row">
+          <label class="field grow"><span>Новая обложка</span><input type="file" name="cover" accept="image/png,image/jpeg,image/webp"></label>
+          {% if program.cover_path %}
+            <label class="checkbox-field"><input type="checkbox" name="remove_cover" value="1"><span>Удалить обложку</span></label>
+          {% endif %}
+        </div>
+        <div class="form-actions"><button class="btn btn-primary" type="submit">Сохранить изменения</button></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div><span class="eyebrow">Очередь передачи</span><h2>Видео <span class="count-badge">{{ program.items|length }}</span></h2></div>
+        <button class="btn btn-ghost btn-sm" type="button" data-save-order="{{ url_for('admin.program_reorder', program_id=program.id) }}"><svg class="icon"><use href="#i-check"/></svg>Сохранить порядок</button>
+      </div>
+      {% if program.items %}
+        <div class="sortable-list" data-sortable data-reorder-url="{{ url_for('admin.program_reorder', program_id=program.id) }}">
+          {% for item in program.items %}
+            <div class="sortable-item" draggable="true" data-item-id="{{ item.id }}">
+              <span class="drag-handle" title="Перетащить"><svg class="icon"><use href="#i-grip"/></svg></span>
+              <span class="item-index">{{ '%02d'|format(loop.index) }}</span>
+              <div class="item-main">
+                <strong>{{ item.media.title if item.media else 'Медиа удалено' }}</strong>
+                <small>
+                  {% if item.media %}
+                    {{ item.media.source_label }} · {{ item.media.duration_label }} · {{ item.media.resolution_label }}
+                    {% if item.media.status == 'error' %}<span class="text-danger">· ошибка источника</span>{% endif %}
+                  {% else %}—{% endif %}
+                </small>
+              </div>
+              {% if item.media %}
+                <a class="icon-btn" href="{{ url_for('admin.media_preview', media_id=item.media.id) }}" target="_blank" rel="noopener" title="Предпросмотр"><svg class="icon"><use href="#i-eye"/></svg></a>
+              {% endif %}
+              <form method="post" action="{{ url_for('admin.program_item_remove', program_id=program.id, item_id=item.id) }}" class="inline-form" data-confirm="Удалить этот ролик из передачи?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="icon-btn danger" type="submit" title="Удалить"><svg class="icon"><use href="#i-trash"/></svg></button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state"><svg class="icon"><use href="#i-film"/></svg><p>В передаче пока нет видео. Добавьте ссылку или загрузите файл.</p></div>
+      {% endif %}
+      <p class="field-hint">Порядок сохраняется автоматически после перетаскивания. Кнопка выше сохраняет его повторно.</p>
+    </section>
+  </div>
+
+  <aside class="edit-side">
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Интернет</span><h2>Добавить ссылку</h2></div></div>
+      <form method="post" action="{{ url_for('admin.program_add_url', program_id=program.id) }}" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field"><span>URL источника</span><input type="url" name="url" required placeholder="https://…"><small class="field-hint">YouTube и другие сайты yt-dlp, прямые MP4 или HLS. Видео не скачивается.</small></label>
+        <label class="field"><span>Название</span><input type="text" name="title" maxlength="300" placeholder="Необязательно"></label>
+        <div class="form-row">
+          <label class="field grow"><span>Категория</span><input type="text" name="category" maxlength="80" placeholder="Новости"></label>
+          <label class="field grow"><span>Теги</span><input type="text" name="tags" maxlength="300" placeholder="эфир, вечер"></label>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit"><svg class="icon"><use href="#i-link"/></svg>Добавить ссылку</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Файл</span><h2>Загрузить видео</h2></div></div>
+      <form method="post" action="{{ url_for('admin.program_upload', program_id=program.id) }}" enctype="multipart/form-data" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field"><span>Видеофайл</span><input type="file" name="video" accept="video/mp4,video/x-matroska,video/webm,video/quicktime,video/x-msvideo,.mkv,.mp4,.webm,.mov,.m4v,.avi,.ts" required><small class="field-hint">MP4, MKV, WebM, MOV, M4V, AVI, TS. Файл проверяется через FFprobe.</small></label>
+        <label class="field"><span>Название</span><input type="text" name="title" maxlength="300" placeholder="По имени файла"></label>
+        <button class="btn btn-primary btn-block" type="submit"><svg class="icon"><use href="#i-upload"/></svg>Загрузить и добавить</button>
+      </form>
+    </section>
+
+    <section class="card danger-zone">
+      <div class="card-head"><div><span class="eyebrow">Опасная зона</span><h2>Удалить передачу</h2></div></div>
+      <p class="muted">Передача удалится вместе со списком видео. Исходные файлы останутся в медиатеке.</p>
+      <form method="post" action="{{ url_for('admin.program_delete', program_id=program.id) }}" data-confirm="Удалить передачу «{{ program.title }}»?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger btn-block" type="submit"><svg class="icon"><use href="#i-trash"/></svg>Удалить передачу</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

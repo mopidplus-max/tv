@@ -1,0 +1,63 @@
+name: docker-build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build container image
+        run: |
+          docker build \
+            --tag "$IMAGE:latest" \
+            --tag "$IMAGE:${{ github.sha }}" \
+            .
+
+      - name: Push container image
+        run: |
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${{ github.sha }}"
+
+      - name: Run the image and check /healthz
+        run: |
+          docker run -d --name simple-iptv-ci \
+            -p 5000:5000 \
+            -e SECRET_KEY=ci-secret-key-0123456789 \
+            -e ADMIN_PATH=/ci-admin/admin/ \
+            -e PUBLIC_BASE_URL=http://127.0.0.1:5000 \
+            -e TZ=Europe/Moscow \
+            "$IMAGE:latest"
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5000/healthz; then
+              echo
+              echo "healthz answered on attempt $attempt"
+              break
+            fi
+            sleep 3
+          done
+          curl -fsS -o /dev/null -w "root=%{http_code}\n" http://127.0.0.1:5000/
+          curl -fsS -o /dev/null -w "playlist=%{http_code}\n" http://127.0.0.1:5000/playlist.m3u
+          curl -fsS -o /dev/null -w "epg=%{http_code}\n" http://127.0.0.1:5000/epg.xml
+
+      - name: Container logs
+        if: always()
+        run: docker logs simple-iptv-ci || true

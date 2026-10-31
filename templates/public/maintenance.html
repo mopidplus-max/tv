@@ -1,0 +1,35 @@
+{% extends "public/base.html" %}
+{% block title %}{{ channel.name }} — профилактика{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">{% endblock %}
+
+{% block content %}
+<section class="status-hero maintenance-hero">
+  <div class="status-copy">
+    <span class="status-chip status-maintenance"><svg class="icon"><use href="#i-clock"/></svg>Техническое обслуживание</span>
+    <h1>Скоро вернёмся в эфир</h1>
+    <p class="status-message">{{ maintenance_message or 'Канал находится на техническом обслуживании.' }}</p>
+    <div class="status-meta">
+      <span>{{ channel.name }}</span>
+      <span>{{ now.strftime('%d.%m.%Y · %H:%M') }}</span>
+    </div>
+  </div>
+  <div class="status-player">
+    {% include "public/_player.html" %}
+  </div>
+</section>
+
+<section class="public-section">
+  <div class="maintenance-note card public-card">
+    <svg class="icon"><use href="#i-clock"/></svg>
+    <div>
+      <h2>Что происходит?</h2>
+      <p class="muted">Идёт плановое обновление канала. Плеер автоматически переподключится, когда вещание возобновится. Ссылки M3U и EPG остаются доступными.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/hls.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %}

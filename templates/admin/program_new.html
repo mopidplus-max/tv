@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — новая передача{% endblock %}
+{% block eyebrow %}Контент{% endblock %}
+{% block page_title %}Создать передачу{% endblock %}
+
+{% block content %}
+<div class="stepper">
+  <div class="step active"><span>1</span><div><strong>Название и описание</strong><small>Сначала придумайте название</small></div></div>
+  <div class="step"><span>2</span><div><strong>Видео</strong><small>Добавьте ролики после создания</small></div></div>
+</div>
+
+<section class="card form-card">
+  <div class="card-head"><div><span class="eyebrow">Шаг 1 из 2</span><h2>Новая передача</h2></div></div>
+  <form method="post" enctype="multipart/form-data" class="stack-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="field">
+      <span>Название передачи <em>*</em></span>
+      <input type="text" name="title" maxlength="300" required placeholder="Например: Вечерний эфир" autofocus>
+    </label>
+    <label class="field">
+      <span>Описание</span>
+      <textarea name="description" rows="4" maxlength="4000" placeholder="Короткое описание для телепрограммы и EPG"></textarea>
+    </label>
+    <label class="field">
+      <span>Обложка</span>
+      <input type="file" name="cover" accept="image/png,image/jpeg,image/webp">
+      <small class="field-hint">PNG, JPEG или WebP. Необязательно.</small>
+    </label>
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{{ url_for('admin.programs') }}">Отмена</a>
+      <button class="btn btn-primary" type="submit">Создать и перейти к видео<svg class="icon"><use href="#i-chevron"/></svg></button>
+    </div>
+  </form>
+</section>
+{% endblock %}

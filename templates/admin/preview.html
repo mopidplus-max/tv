@@ -1,0 +1,126 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — предпросмотр канала{% endblock %}
+{% block eyebrow %}Эфир{% endblock %}
+{% block page_title %}Предпросмотр канала{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Это тот же HLS-поток, который получают зрители. Управление ниже влияет на общий эфир.</p></div>
+  <div class="lead-actions">
+    <a class="btn btn-ghost" href="{{ url_for('public.index') }}" target="_blank" rel="noopener"><svg class="icon"><use href="#i-external"/></svg>Открыть публичную страницу</a>
+    <button class="btn btn-primary" type="button" data-director="{{ url_for('admin.director_next_program') }}"><svg class="icon"><use href="#i-next"/></svg>Следующая передача</button>
+  </div>
+</section>
+
+<div class="preview-layout">
+  <section class="preview-main">
+    <div class="simple-player" data-player data-stream="{{ stream_url }}" data-now="{{ url_for('public.api_now') }}" data-heartbeat="{{ url_for('public.heartbeat') }}" data-mode="{{ mode }}">
+      <video id="simple-video" playsinline preload="auto"></video>
+      <div class="player-loading" data-player-loading><span class="spinner"></span><span>Подключение к эфиру…</span></div>
+      <div class="player-error" data-player-error hidden><svg class="icon"><use href="#i-warning"/></svg><span data-player-error-text>Поток недоступен</span><button class="btn btn-ghost btn-sm" type="button" data-player-retry>Повторить</button></div>
+      <div class="player-topline">
+        <span class="live-chip"><span class="dot"></span>LIVE</span>
+        <span class="player-clock" data-player-clock>--:--</span>
+      </div>
+      <div class="player-titlebar">
+        <span class="player-brand">SIMPLE</span>
+        <span class="player-now" data-player-title>{{ current.title if current else (status.get('program_title') or 'Ожидание эфира') }}</span>
+        <span class="player-next" data-player-next>{{ ('Далее: ' ~ (following.title if following else status.get('next_program_title'))) if (following or status.get('next_program_title')) else '' }}</span>
+      </div>
+      <div class="player-controls" data-player-controls>
+        <button class="player-btn" type="button" data-player-play title="Play/Pause"><svg class="icon"><use href="#i-play"/></svg></button>
+        <div class="player-volume">
+          <button class="player-btn" type="button" data-player-mute title="Звук"><svg class="icon"><use href="#i-volume"/></svg></button>
+          <input type="range" min="0" max="1" step="0.05" value="0.8" data-player-volume aria-label="Громкость">
+        </div>
+        <div class="player-progress">
+          <div class="player-progress-track"><span data-player-progress style="width: 0%"></span></div>
+          <span class="player-time" data-player-time>LIVE</span>
+        </div>
+        <button class="player-btn" type="button" data-player-fullscreen title="Полный экран"><svg class="icon"><use href="#i-fullscreen"/></svg></button>
+      </div>
+    </div>
+
+    <article class="card player-info">
+      <div class="card-head">
+        <div>
+          <span class="eyebrow">Сейчас в эфире</span>
+          <h2 data-live="program-title">{{ current.title if current else (status.get('program_title') or 'Ожидание эфира') }}</h2>
+        </div>
+        <span class="pill" data-live="engine-state">{{ status.get('state', '—') }}</span>
+      </div>
+      <p class="muted" data-live="program-description">{{ current.description if current else (status.get('program_description') or 'Добавьте передачу в расписание.') }}</p>
+      <div class="progress-block">
+        <div class="progress-meta"><span data-live="program-time">{{ fmt_time(status.get('program_started_at')|to_datetime) if status.get('program_started_at') else '—' }} — {{ fmt_time(status.get('program_ends_at')|to_datetime) if status.get('program_ends_at') else '—' }}</span><span data-live="progress-label">{{ status.get('progress', 0) }}%</span></div>
+        <div class="progress"><span data-live-bar="program" style="width: {{ status.get('program_progress', 0) }}%"></span></div>
+      </div>
+      <div class="meta-grid">
+        <div><span class="meta-label">Текущий ролик</span><strong data-live="media-title">{{ status.get('media_title') or '—' }}</strong></div>
+        <div><span class="meta-label">Элемент</span><strong data-live="item-index">{{ status.get('item_index', 0) + 1 }} / {{ status.get('items_total', 0) }}</strong></div>
+        <div><span class="meta-label">Следующая</span><strong data-live="next-title">{{ following.title if following else (status.get('next_program_title') or '—') }}</strong></div>
+        <div><span class="meta-label">Зрители</span><strong data-live="viewers">{{ status.get('viewers', 0) }}</strong></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-head"><div><span class="eyebrow">Передача</span><h2>{{ current_program.title if current_program else 'Нет активной передачи' }}</h2></div></div>
+      {% if items %}
+        <div class="playlist">
+          {% for item in items %}
+            <div class="playlist-row {{ 'is-current' if status.get('item_id') == item.id }}">
+              <span class="playlist-index">{{ '%02d'|format(loop.index) }}</span>
+              <div class="playlist-main"><strong>{{ item.media.title if item.media else 'Без медиа' }}</strong><small>{{ item.media.source_label if item.media else '—' }} · {{ item.media.duration_label if item.media else '—' }}</small></div>
+              <span class="badge">{{ item.media.resolution_label if item.media else '—' }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state"><svg class="icon"><use href="#i-film"/></svg><p>В текущей передаче нет видео.</p></div>
+      {% endif %}
+    </article>
+  </section>
+
+  <aside class="preview-side">
+    <article class="card director-card sticky-card">
+      <div class="card-head"><div><span class="eyebrow">Режиссёрская панель</span><h2>Эфир</h2></div></div>
+      <div class="director-grid">
+        <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_pause') }}"><svg class="icon"><use href="#i-pause"/></svg>Пауза</button>
+        <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_resume') }}"><svg class="icon"><use href="#i-play"/></svg>Продолжить</button>
+        <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_skip') }}"><svg class="icon"><use href="#i-skip"/></svg>Пропустить</button>
+        <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_restart') }}"><svg class="icon"><use href="#i-restart"/></svg>Перезапустить</button>
+        <button class="btn btn-ghost" type="button" data-director="{{ url_for('admin.director_next_program') }}"><svg class="icon"><use href="#i-next"/></svg>Следующая передача</button>
+      </div>
+      <div class="field">
+        <label for="next-item">Следующий ролик вручную</label>
+        <div class="inline-control">
+          <select id="next-item" data-next-item-select>
+            {% for item in items %}<option value="{{ item.id }}">{{ loop.index }}. {{ item.media.title if item.media else 'Без медиа' }}</option>{% endfor %}
+          </select>
+          <button class="btn btn-primary" type="button" data-play-item="{{ url_for('admin.director_play_item') }}">В эфир</button>
+        </div>
+      </div>
+      <div class="director-meta">
+        <span>Состояние <strong data-live="engine-state">{{ status.get('state', '—') }}</strong></span>
+        <span>FFmpeg <strong data-live="ffmpeg-state">{{ 'работает' if status.get('ffmpeg_running') else 'ожидает' }}</strong></span>
+        <span>Осталось <strong data-live="remaining">{{ fmt_duration(status.get('remaining')) if status.get('remaining') else '—' }}</strong></span>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-head"><div><span class="eyebrow">Статус</span><h2>Поток</h2></div></div>
+      <div class="status-list">
+        <div><span>HLS-плейлист</span><strong data-live="hls">{{ 'готов' if status.get('hls_ready') else 'нет' }}</strong></div>
+        <div><span>Сегменты</span><strong data-live="segments">{{ status.get('hls_segments', 0) }}</strong></div>
+        <div><span>FFmpeg PID</span><strong data-live="ffmpeg-pid">{{ status.get('ffmpeg_pid') or '—' }}</strong></div>
+        <div><span>Зрители</span><strong data-live="viewers">{{ status.get('viewers', 0) }}</strong></div>
+      </div>
+    </article>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/hls.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/player.js') }}"></script>
+{% endblock %}

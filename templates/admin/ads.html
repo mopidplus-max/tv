@@ -1,0 +1,73 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — реклама{% endblock %}
+{% block eyebrow %}Контент{% endblock %}
+{% block page_title %}Реклама{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Рекламные ролики 16:9 выходят после видео (с заданной вероятностью) и после передачи. Случайный выбор исключает немедленный повтор.</p></div>
+  <a class="btn btn-primary" href="#ad-upload"><svg class="icon"><use href="#i-upload"/></svg>Загрузить ролик</a>
+</section>
+
+<div class="media-layout">
+  <section class="card">
+    <div class="card-head">
+      <div><span class="eyebrow">Настройки показа</span><h2>Правила рекламы</h2></div>
+      <span class="badge {{ 'badge-success' if settings.ads_enabled else 'badge-muted' }}">{{ 'Включена' if settings.ads_enabled else 'Выключена' }}</span>
+    </div>
+    <form method="post" action="{{ url_for('admin.ads_settings') }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="checkbox-field"><input type="checkbox" name="ads_enabled" value="1" {{ 'checked' if settings.ads_enabled }}><span>Реклама включена</span></label>
+      <label class="checkbox-field"><input type="checkbox" name="ad_after_program" value="1" {{ 'checked' if settings.ad_after_program }}><span>Показывать блок после каждой передачи</span></label>
+      <div class="form-row">
+        <label class="field grow"><span>Вероятность после видео, %</span><input type="number" name="ad_after_video_probability" value="{{ settings.ad_after_video_probability }}" min="0" max="100"><small class="field-hint">0 — никогда, 100 — после каждого ролика.</small></label>
+        <label class="field grow"><span>Роликов в блоке</span><input type="number" name="ad_block_size" value="{{ settings.ad_block_size }}" min="1" max="5"></label>
+      </div>
+      <button class="btn btn-primary" type="submit">Сохранить правила</button>
+    </form>
+  </section>
+
+  <section class="card form-card" id="ad-upload">
+    <div class="card-head"><div><span class="eyebrow">Новый материал</span><h2>Загрузить рекламу</h2></div></div>
+    <form method="post" action="{{ url_for('admin.ads_upload') }}" enctype="multipart/form-data" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field"><span>Видеофайл <em>*</em></span><input type="file" name="video" accept="video/mp4,video/x-matroska,video/webm,video/quicktime,.mp4,.mkv,.webm,.mov,.m4v,.ts" required><small class="field-hint">Только 16:9 (от 1.70 до 1.86). Файл проверяется FFprobe.</small></label>
+      <label class="field"><span>Название</span><input type="text" name="title" maxlength="300" placeholder="По имени файла"></label>
+      <button class="btn btn-primary btn-block" type="submit"><svg class="icon"><use href="#i-upload"/></svg>Загрузить</button>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head"><div><span class="eyebrow">Хранилище</span><h2>Ролики <span class="count-badge">{{ ads|length }}</span></h2></div></div>
+  {% if ads %}
+    <div class="media-grid">
+      {% for ad in ads %}
+        <article class="media-card {{ 'is-disabled' if not ad.enabled }}">
+          <div class="media-thumb">
+            <video src="{{ url_for('admin.ads_preview', ad_id=ad.id) }}" preload="metadata" muted playsinline></video>
+            <span class="media-duration">{{ fmt_duration(ad.duration) }}</span>
+            <span class="badge {{ 'badge-success' if ad.enabled else 'badge-muted' }}">{{ 'Активен' if ad.enabled else 'Выключен' }}</span>
+          </div>
+          <div class="media-body">
+            <h3>{{ ad.title }}</h3>
+            <p class="muted">{{ ad.width or '—' }}×{{ ad.height or '—' }} · {{ fmt_dt(ad.created_at, '%d.%m.%Y') }}</p>
+            <div class="media-actions">
+              <form method="post" action="{{ url_for('admin.ads_toggle', ad_id=ad.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-ghost btn-sm" type="submit">{{ 'Выключить' if ad.enabled else 'Включить' }}</button>
+              </form>
+              <form method="post" action="{{ url_for('admin.ads_delete', ad_id=ad.id) }}" class="inline-form" data-confirm="Удалить рекламный ролик «{{ ad.title }}»?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="icon-btn danger" type="submit" title="Удалить"><svg class="icon"><use href="#i-trash"/></svg></button>
+              </form>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state"><svg class="icon"><use href="#i-ad"/></svg><h2>Рекламных роликов нет</h2><p class="muted">Загрузите видео 16:9, чтобы включить рекламные блоки.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

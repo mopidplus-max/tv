@@ -1,0 +1,92 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — мониторинг{% endblock %}
+{% block eyebrow %}Система{% endblock %}
+{% block page_title %}Мониторинг{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Состояние сервера, эфирного движка и HLS-потока. Данные обновляются каждые 3 секунды.</p></div>
+  <span class="live-chip"><span class="dot"></span>LIVE</span>
+</section>
+
+<div class="monitor-grid" data-monitoring-url="{{ url_for('admin.api_monitoring') }}">
+  <article class="card metric-card">
+    <span class="metric-icon"><svg class="icon"><use href="#i-cpu"/></svg></span>
+    <div><span class="meta-label">Процессор</span><strong data-metric="cpu">{{ metrics.cpu }}%</strong></div>
+    <div class="meter"><span data-metric-bar="cpu" style="width: {{ metrics.cpu }}%"></span></div>
+    <small class="muted">Ядер: {{ metrics.cpu_count }}</small>
+  </article>
+  <article class="card metric-card">
+    <span class="metric-icon"><svg class="icon"><use href="#i-memory"/></svg></span>
+    <div><span class="meta-label">Память</span><strong data-metric="memory">{{ metrics.memory_percent }}%</strong></div>
+    <div class="meter"><span data-metric-bar="memory" style="width: {{ metrics.memory_percent }}%"></span></div>
+    <small class="muted">{{ metrics.memory_used_label }} из {{ metrics.memory_total_label }}</small>
+  </article>
+  <article class="card metric-card">
+    <span class="metric-icon"><svg class="icon"><use href="#i-disk"/></svg></span>
+    <div><span class="meta-label">Диск</span><strong data-metric="disk">{{ metrics.disk_percent }}%</strong></div>
+    <div class="meter"><span data-metric-bar="disk" style="width: {{ metrics.disk_percent }}%"></span></div>
+    <small class="muted">{{ metrics.disk_free_label }} свободно</small>
+  </article>
+  <article class="card metric-card">
+    <span class="metric-icon"><svg class="icon"><use href="#i-activity"/></svg></span>
+    <div><span class="meta-label">Сеть</span><strong data-metric="net">↓ {{ metrics.net_recv_label }}</strong></div>
+    <small class="muted" data-metric="net-out">↑ {{ metrics.net_sent_label }}</small>
+  </article>
+  <article class="card metric-card">
+    <span class="metric-icon"><svg class="icon"><use href="#i-film"/></svg></span>
+    <div><span class="meta-label">FFmpeg</span><strong data-metric="ffmpeg">{{ metrics.ffmpeg_processes }}</strong></div>
+    <small class="muted">активных процессов</small>
+  </article>
+  <article class="card metric-card">
+    <span class="metric-icon"><svg class="icon"><use href="#i-server"/></svg></span>
+    <div><span class="meta-label">HLS-сегменты</span><strong data-metric="segments">{{ metrics.hls_segments }}</strong></div>
+    <small class="muted">{{ metrics.hls_size_label }} · {{ metrics.uptime_label }}</small>
+  </article>
+</div>
+
+<div class="monitor-layout">
+  <section class="card">
+    <div class="card-head"><div><span class="eyebrow">Движок</span><h2>Эфирное состояние</h2></div><span class="pill" data-metric="engine-state">{{ status.get('state', '—') }}</span></div>
+    <div class="detail-grid">
+      <div><span class="meta-label">Состояние</span><strong data-metric="engine-state">{{ status.get('state', '—') }}</strong></div>
+      <div><span class="meta-label">Фаза</span><strong data-metric="engine-phase">{{ status.get('phase', '—') }}</strong></div>
+      <div><span class="meta-label">FFmpeg</span><strong data-metric="ffmpeg-state">{{ 'работает' if status.get('ffmpeg_running') else 'ожидает' }}</strong></div>
+      <div><span class="meta-label">PID</span><strong data-metric="ffmpeg-pid">{{ status.get('ffmpeg_pid') or '—' }}</strong></div>
+      <div><span class="meta-label">Передача</span><strong data-metric="program">{{ status.get('program_title') or '—' }}</strong></div>
+      <div><span class="meta-label">Ролик</span><strong data-metric="media">{{ status.get('media_title') or '—' }}</strong></div>
+      <div><span class="meta-label">Прогресс</span><strong data-metric="progress">{{ status.get('progress', 0) }}%</strong></div>
+      <div><span class="meta-label">Зрители</span><strong data-metric="viewers">{{ status.get('viewers', 0) }}</strong></div>
+      <div><span class="meta-label">Плейлист</span><strong data-metric="hls">{{ 'готов' if status.get('hls_ready') else 'нет' }}</strong></div>
+      <div><span class="meta-label">Возраст плейлиста</span><strong data-metric="hls-age">{{ status.get('hls_playlist_age') or '—' }}</strong></div>
+    </div>
+    {% if status.get('last_error') %}
+      <div class="flash flash-error"><svg class="icon"><use href="#i-warning"/></svg><span>{{ status.get('last_error') }}</span></div>
+    {% endif %}
+  </section>
+
+  <aside class="monitor-side">
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Ссылки</span><h2>Публичные адреса</h2></div></div>
+      <div class="status-list">
+        <div><span>Поток</span><a class="mono" href="{{ base_url }}/live/index.m3u8" target="_blank" rel="noopener">{{ base_url }}/live/index.m3u8</a></div>
+        <div><span>M3U</span><a class="mono" href="{{ base_url }}/playlist.m3u" target="_blank" rel="noopener">/playlist.m3u</a></div>
+        <div><span>EPG</span><a class="mono" href="{{ base_url }}/epg.xml.gz" target="_blank" rel="noopener">/epg.xml.gz</a></div>
+        <div><span>Health</span><a class="mono" href="{{ base_url }}/healthz" target="_blank" rel="noopener">/healthz</a></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Проверка</span><h2>Быстрые действия</h2></div></div>
+      <div class="stack-actions">
+        <a class="btn btn-ghost btn-block" href="{{ url_for('admin.test_page') }}"><svg class="icon"><use href="#i-test"/></svg>Тестовый эфир</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('admin.logs_page') }}"><svg class="icon"><use href="#i-log"/></svg>Журнал эфира</a>
+        <a class="btn btn-primary btn-block" href="{{ url_for('admin.preview') }}"><svg class="icon"><use href="#i-play"/></svg>Предпросмотр</a>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/monitoring.js') }}"></script>
+{% endblock %}

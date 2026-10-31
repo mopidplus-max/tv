@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — бамперы{% endblock %}
+{% block eyebrow %}Контент{% endblock %}
+{% block page_title %}Бамперы{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Бампер — короткая заставка между видео. Показывается после ролика с заданной вероятностью; немедленный повтор исключён.</p></div>
+  <a class="btn btn-primary" href="#bumper-upload"><svg class="icon"><use href="#i-upload"/></svg>Загрузить бампер</a>
+</section>
+
+<div class="media-layout">
+  <section class="card">
+    <div class="card-head">
+      <div><span class="eyebrow">Настройки показа</span><h2>Правила бамперов</h2></div>
+      <span class="badge {{ 'badge-success' if settings.bumpers_enabled else 'badge-muted' }}">{{ 'Включены' if settings.bumpers_enabled else 'Выключены' }}</span>
+    </div>
+    <form method="post" action="{{ url_for('admin.bumpers_settings') }}" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="checkbox-field"><input type="checkbox" name="bumpers_enabled" value="1" {{ 'checked' if settings.bumpers_enabled }}><span>Бамперы включены</span></label>
+      <label class="field"><span>Общая вероятность, %</span><input type="number" name="bumper_probability" value="{{ settings.bumper_probability }}" min="0" max="100"><small class="field-hint">Применяется ко всем бамперам. 0 — не показывать.</small></label>
+      <button class="btn btn-primary" type="submit">Сохранить правила</button>
+    </form>
+  </section>
+
+  <section class="card form-card" id="bumper-upload">
+    <div class="card-head"><div><span class="eyebrow">Новый материал</span><h2>Загрузить бампер</h2></div></div>
+    <form method="post" action="{{ url_for('admin.bumpers_upload') }}" enctype="multipart/form-data" class="stack-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field"><span>Видеофайл <em>*</em></span><input type="file" name="video" accept="video/mp4,video/x-matroska,video/webm,video/quicktime,.mp4,.mkv,.webm,.mov,.m4v,.ts" required><small class="field-hint">Короткий ролик. Файл проверяется FFprobe.</small></label>
+      <div class="form-row">
+        <label class="field grow"><span>Название</span><input type="text" name="title" maxlength="300" placeholder="По имени файла"></label>
+        <label class="field grow"><span>Вероятность, %</span><input type="number" name="probability" value="100" min="1" max="100"></label>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit"><svg class="icon"><use href="#i-upload"/></svg>Загрузить</button>
+    </form>
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head"><div><span class="eyebrow">Хранилище</span><h2>Бамперы <span class="count-badge">{{ bumpers|length }}</span></h2></div></div>
+  {% if bumpers %}
+    <div class="media-grid">
+      {% for bumper in bumpers %}
+        <article class="media-card {{ 'is-disabled' if not bumper.enabled }}">
+          <div class="media-thumb">
+            <video src="{{ url_for('admin.bumpers_preview', bumper_id=bumper.id) }}" preload="metadata" muted playsinline></video>
+            <span class="media-duration">{{ fmt_duration(bumper.duration) }}</span>
+            <span class="badge {{ 'badge-success' if bumper.enabled else 'badge-muted' }}">{{ 'Активен' if bumper.enabled else 'Выключен' }}</span>
+          </div>
+          <div class="media-body">
+            <h3>{{ bumper.title }}</h3>
+            <p class="muted">{{ bumper.width or '—' }}×{{ bumper.height or '—' }} · {{ fmt_dt(bumper.created_at, '%d.%m.%Y') }}</p>
+            <form method="post" action="{{ url_for('admin.bumpers_probability', bumper_id=bumper.id) }}" class="probability-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label><span>Вероятность</span><input type="number" name="probability" value="{{ bumper.probability }}" min="1" max="100"></label>
+              <button class="icon-btn" type="submit" title="Применить"><svg class="icon"><use href="#i-check"/></svg></button>
+            </form>
+            <div class="media-actions">
+              <form method="post" action="{{ url_for('admin.bumpers_toggle', bumper_id=bumper.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-ghost btn-sm" type="submit">{{ 'Выключить' if bumper.enabled else 'Включить' }}</button>
+              </form>
+              <form method="post" action="{{ url_for('admin.bumpers_delete', bumper_id=bumper.id) }}" class="inline-form" data-confirm="Удалить бампер «{{ bumper.title }}»?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="icon-btn danger" type="submit" title="Удалить"><svg class="icon"><use href="#i-trash"/></svg></button>
+              </form>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state"><svg class="icon"><use href="#i-bumper"/></svg><h2>Бамперов нет</h2><p class="muted">Загрузите короткие заставки для переходов между видео.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

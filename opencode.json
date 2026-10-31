@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "blitz": {
+        "type": "remote",
+        "url": "https://mcp.blitz.cloud/tvapi-source"
+      }
+    }
+  }
+}

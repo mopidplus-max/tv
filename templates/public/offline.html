@@ -1,0 +1,23 @@
+{% extends "public/base.html" %}
+{% block title %}{{ channel.name }} — канал выключен{% endblock %}
+
+{% block content %}
+<section class="status-hero offline-hero">
+  <div class="status-copy">
+    <span class="status-chip status-offline"><span class="dot"></span>Эфир приостановлен</span>
+    <h1>Канал временно не работает</h1>
+    <p class="status-message">Вещание выключено администратором. Загляните позже — канал вернётся в эфир автоматически.</p>
+    <div class="status-meta">
+      <span>{{ channel.name }}</span>
+      <span>{{ now.strftime('%d.%m.%Y · %H:%M') }}</span>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('public.index') }}"><svg class="icon"><use href="#i-play"/></svg>Проверить снова</a>
+      <a class="btn btn-ghost" href="{{ url_for('public.tv_guide') }}"><svg class="icon"><use href="#i-calendar"/></svg>Телепрограмма</a>
+    </div>
+  </div>
+  <div class="offline-art" aria-hidden="true">
+    <div class="offline-screen"><span class="offline-mark">S</span><span class="offline-line"></span><small>NO SIGNAL</small></div>
+  </div>
+</section>
+{% endblock %}

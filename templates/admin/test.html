@@ -1,0 +1,48 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — тестовый эфир{% endblock %}
+{% block eyebrow %}Система{% endblock %}
+{% block page_title %}Тестовый эфир{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Проверка окружения: бинарники, база, каталоги, EPG, M3U и генерация HLS. Проверки не изменяют настройки канала.</p></div>
+  <button class="btn btn-primary" type="button" data-test-run="{{ url_for('admin.test_run') }}"><svg class="icon"><use href="#i-bolt"/></svg>Запустить проверки</button>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><span class="eyebrow">Результаты</span><h2>Диагностика</h2></div>
+    <span class="badge badge-muted" data-test-summary>Не запускалось</span>
+  </div>
+  <div class="test-results" data-test-results>
+    <div class="empty-state"><svg class="icon"><use href="#i-test"/></svg><p>Нажмите «Запустить проверки», чтобы оценить готовность канала.</p></div>
+  </div>
+</section>
+
+<div class="test-grid">
+  <section class="card">
+    <div class="card-head"><div><span class="eyebrow">Публичные ссылки</span><h2>Что проверять в плеере</h2></div></div>
+    <div class="status-list">
+      <div><span>HLS-поток</span><a class="mono" href="{{ base_url }}/live/index.m3u8" target="_blank" rel="noopener">{{ base_url }}/live/index.m3u8</a></div>
+      <div><span>M3U-плейлист</span><a class="mono" href="{{ base_url }}/playlist.m3u" target="_blank" rel="noopener">{{ base_url }}/playlist.m3u</a></div>
+      <div><span>EPG XML</span><a class="mono" href="{{ base_url }}/epg.xml" target="_blank" rel="noopener">{{ base_url }}/epg.xml</a></div>
+      <div><span>EPG GZIP</span><a class="mono" href="{{ base_url }}/epg.xml.gz" target="_blank" rel="noopener">{{ base_url }}/epg.xml.gz</a></div>
+      <div><span>Health</span><a class="mono" href="{{ base_url }}/healthz" target="_blank" rel="noopener">{{ base_url }}/healthz</a></div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><div><span class="eyebrow">Как это работает</span><h2>Единый движок</h2></div></div>
+    <ul class="info-list">
+      <li>Один FFmpeg-процесс формирует HLS для всех зрителей.</li>
+      <li>Источники yt-dlp только извлекаются, видео не скачивается.</li>
+      <li>Локальные файлы проверяются FFprobe перед добавлением.</li>
+      <li>При ошибке источника движок повторяет попытку и переходит дальше.</li>
+      <li>Проверка HLS создаёт временный поток и удаляет его.</li>
+    </ul>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/test.js') }}"></script>
+{% endblock %}

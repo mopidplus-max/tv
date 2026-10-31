@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — журнал эфира{% endblock %}
+{% block eyebrow %}Система{% endblock %}
+{% block page_title %}Журнал эфира{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Все события вещания, источников, расписания и панели. Записи также дублируются в файл <span class="mono">logs/simple.log</span>.</p></div>
+  <span class="badge badge-muted">Всего событий: {{ total }}</span>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><span class="eyebrow">Фильтры</span><h2>Поиск по журналу</h2></div>
+  </div>
+  <form method="get" class="filter-form wide">
+    <div class="search-input"><svg class="icon"><use href="#i-search"/></svg><input type="search" name="q" value="{{ q }}" placeholder="Текст события"></div>
+    <select name="level" aria-label="Уровень">
+      <option value="">Все уровни</option>
+      {% for value, label in [('debug','Отладка'),('info','Информация'),('warning','Предупреждение'),('error','Ошибка'),('critical','Критично')] %}
+        <option value="{{ value }}" {{ 'selected' if level == value }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="category" aria-label="Категория">
+      <option value="">Все категории</option>
+      {% for item in categories %}<option value="{{ item }}" {{ 'selected' if category == item }}>{{ item }}</option>{% endfor %}
+    </select>
+    <label class="field compact-field"><span>С</span><input type="date" name="date_from" value="{{ date_from }}"></label>
+    <label class="field compact-field"><span>По</span><input type="date" name="date_to" value="{{ date_to }}"></label>
+    <button class="btn btn-ghost btn-sm" type="submit"><svg class="icon"><use href="#i-filter"/></svg>Применить</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.logs_page') }}">Сбросить</a>
+  </form>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div><span class="eyebrow">События</span><h2>Страница {{ page }} из {{ pages }}</h2></div>
+    <form method="post" action="{{ url_for('admin.logs_clear') }}" class="inline-form" data-confirm="Очистить журнал? Это действие нельзя отменить.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="number" name="days" value="30" min="0" max="3650" class="small-input" title="0 — удалить всё, иначе только старше N дней">
+      <button class="btn btn-danger btn-sm" type="submit"><svg class="icon"><use href="#i-trash"/></svg>Очистить</button>
+    </form>
+  </div>
+  {% if events %}
+    <div class="table-wrap">
+      <table class="data-table logs-table">
+        <thead><tr><th>Время</th><th>Уровень</th><th>Категория</th><th>Событие</th></tr></thead>
+        <tbody>
+          {% for event in events %}
+            <tr>
+              <td class="nowrap">{{ fmt_dt(event.created_at, '%d.%m.%Y %H:%M:%S') }}<small class="muted block">{{ relative_time(event.created_at) }}</small></td>
+              <td><span class="badge badge-{{ event.level }}">{{ event.level }}</span></td>
+              <td><span class="badge badge-muted">{{ event.category }}</span></td>
+              <td class="log-message">{{ event.message }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if pages > 1 %}
+      <nav class="pagination" aria-label="Страницы журнала">
+        {% if page > 1 %}
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.logs_page', page=page-1, q=q, level=level, category=category, date_from=date_from, date_to=date_to) }}">Назад</a>
+        {% endif %}
+        <span class="muted">Стр. {{ page }} / {{ pages }}</span>
+        {% if page < pages %}
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.logs_page', page=page+1, q=q, level=level, category=category, date_from=date_from, date_to=date_to) }}">Вперёд</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  {% else %}
+    <div class="empty-state"><svg class="icon"><use href="#i-log"/></svg><p>По выбранным фильтрам событий нет.</p></div>
+  {% endif %}
+</section>
+{% endblock %}

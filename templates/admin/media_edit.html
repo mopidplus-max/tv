@@ -1,0 +1,105 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — {{ media.title }}{% endblock %}
+{% block eyebrow %}Контент / медиатека{% endblock %}
+{% block page_title %}Источник{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div>
+    <p class="muted">Метаданные источника и техническая информация, полученная через FFprobe.</p>
+  </div>
+  <div class="lead-actions">
+    <a class="btn btn-ghost" href="{{ url_for('admin.media_library') }}">К медиатеке</a>
+    <a class="btn btn-primary" href="{{ url_for('admin.media_preview', media_id=media.id) }}" target="_blank" rel="noopener">
+      <svg class="icon"><use href="#i-eye"/></svg>Открыть источник
+    </a>
+  </div>
+</section>
+
+<div class="edit-layout">
+  <div class="edit-main">
+    <section class="card form-card">
+      <div class="card-head">
+        <div><span class="eyebrow">Метаданные</span><h2>Описание источника</h2></div>
+        <span class="badge badge-{{ 'success' if media.status == 'ok' else ('error' if media.status == 'error' else 'muted') }}">
+          {{ 'Доступен' if media.status == 'ok' else ('Ошибка' if media.status == 'error' else media.status) }}
+        </span>
+      </div>
+      <form method="post" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field">
+          <span>Название <em>*</em></span>
+          <input type="text" name="title" value="{{ media.title }}" maxlength="300" required autofocus>
+        </label>
+        <div class="form-row">
+          <label class="field grow"><span>Категория</span><input type="text" name="category" value="{{ media.category }}" maxlength="80" placeholder="Например: Новости"></label>
+          <label class="field grow"><span>Теги</span><input type="text" name="tags" value="{{ media.tags }}" maxlength="300" placeholder="эфир, вечер"></label>
+        </div>
+        <div class="form-actions">
+          <a class="btn btn-ghost" href="{{ url_for('admin.media_library') }}">Отмена</a>
+          <button class="btn btn-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Технические данные</span><h2>Параметры потока</h2></div></div>
+      <div class="detail-grid">
+        <div><span class="meta-label">Тип</span><strong>{{ media.source_label }}</strong></div>
+        <div><span class="meta-label">Длительность</span><strong>{{ media.duration_label }}</strong></div>
+        <div><span class="meta-label">Разрешение</span><strong>{{ media.resolution_label }}</strong></div>
+        <div><span class="meta-label">Кадры в секунду</span><strong>{{ '%.2f'|format(media.fps) if media.fps else '—' }}</strong></div>
+        <div><span class="meta-label">Видеокодек</span><strong>{{ media.vcodec or '—' }}</strong></div>
+        <div><span class="meta-label">Аудиокодек</span><strong>{{ media.acodec or '—' }}</strong></div>
+        <div><span class="meta-label">Аудиодорожка</span><strong>{{ 'есть' if media.has_audio else 'нет' }}</strong></div>
+        <div><span class="meta-label">Соотношение</span><strong>{{ media.aspect or '—' }}</strong></div>
+        <div><span class="meta-label">Пиксельный формат</span><strong>{{ media.pix_fmt or '—' }}</strong></div>
+        <div><span class="meta-label">Частота дискретизации</span><strong>{{ (media.sample_rate|string ~ ' Гц') if media.sample_rate else '—' }}</strong></div>
+        <div><span class="meta-label">Размер файла</span><strong>{{ human_size(media.size_bytes) }}</strong></div>
+        <div><span class="meta-label">Проверен</span><strong>{{ fmt_dt(media.last_checked) }}</strong></div>
+      </div>
+      {% if media.last_error %}
+        <div class="flash flash-error"><svg class="icon"><use href="#i-warning"/></svg><span>{{ media.last_error }}</span></div>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin.media_check', media_id=media.id) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-sm" type="submit"><svg class="icon"><use href="#i-refresh"/></svg>Проверить доступность</button>
+      </form>
+    </section>
+  </div>
+
+  <aside class="edit-side">
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Предпросмотр</span><h2>Кадр источника</h2></div></div>
+      {% if media.is_local %}
+        <video class="inline-video" src="{{ url_for('admin.media_file', media_id=media.id) }}" controls preload="metadata" playsinline></video>
+      {% else %}
+        <div class="preview-placeholder">
+          <svg class="icon"><use href="#i-link"/></svg>
+          <p class="muted">Внешний источник открывается в новой вкладке.</p>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.media_preview', media_id=media.id) }}" target="_blank" rel="noopener">Открыть</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <div class="card-head"><div><span class="eyebrow">Источник</span><h2>Адрес</h2></div></div>
+      {% if media.source_url %}
+        <p class="mono break-all">{{ media.source_url }}</p>
+      {% else %}
+        <p class="mono break-all">{{ media.file_path }}</p>
+      {% endif %}
+      <p class="field-hint">Добавлен {{ fmt_dt(media.created_at) }} · {{ relative_time(media.created_at) }}</p>
+    </section>
+
+    <section class="card danger-zone">
+      <div class="card-head"><div><span class="eyebrow">Опасная зона</span><h2>Удалить источник</h2></div></div>
+      <p class="muted">Если источник используется в передачах, сначала удалите его из очереди передач.</p>
+      <form method="post" action="{{ url_for('admin.media_delete', media_id=media.id) }}" data-confirm="Удалить источник «{{ media.title }}»?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-danger btn-block" type="submit"><svg class="icon"><use href="#i-trash"/></svg>Удалить</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

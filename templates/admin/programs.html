@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+{% block title %}SIMPLE — передачи{% endblock %}
+{% block eyebrow %}Контент{% endblock %}
+{% block page_title %}Управление передачами{% endblock %}
+
+{% block content %}
+<section class="page-lead">
+  <div><p class="muted">Передача — это программа телеэфира, состоящая из последовательных видео. После каждого ролика может выходить бампер и реклама.</p></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.program_new') }}"><svg class="icon"><use href="#i-plus"/></svg>Создать передачу</a>
+</section>
+
+{% if programs %}
+  <section class="program-grid">
+    {% for program in programs %}
+      <article class="card program-card">
+        <div class="program-cover">
+          {% if program.cover_path %}
+            <img src="{{ url_for('admin.program_cover', program_id=program.id) }}" alt="{{ program.title }}" loading="lazy">
+          {% else %}
+            <span class="cover-placeholder"><svg class="icon"><use href="#i-tv"/></svg></span>
+          {% endif %}
+          <span class="program-order">#{{ loop.index }}</span>
+          <span class="badge {{ 'badge-success' if program.enabled else 'badge-muted' }}">{{ 'Активна' if program.enabled else 'Выключена' }}</span>
+        </div>
+        <div class="program-body">
+          <h2>{{ program.title }}</h2>
+          <p class="muted">{{ program.description or 'Описание не добавлено.' }}</p>
+          <div class="program-stats">
+            <span><svg class="icon"><use href="#i-film"/></svg>{{ program.items|length }} видео</span>
+            <span><svg class="icon"><use href="#i-clock"/></svg>{{ program.duration_label }}</span>
+          </div>
+        </div>
+        <div class="program-actions">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.program_edit', program_id=program.id) }}"><svg class="icon"><use href="#i-edit"/></svg>Изменить</a>
+          <form method="post" action="{{ url_for('admin.program_move', program_id=program.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="direction" value="up">
+            <button class="icon-btn" type="submit" title="Выше"><svg class="icon"><use href="#i-arrow-up"/></svg></button>
+          </form>
+          <form method="post" action="{{ url_for('admin.program_move', program_id=program.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="direction" value="down">
+            <button class="icon-btn" type="submit" title="Ниже"><svg class="icon"><use href="#i-arrow-down"/></svg></button>
+          </form>
+          <form method="post" action="{{ url_for('admin.program_delete', program_id=program.id) }}" class="inline-form" data-confirm="Удалить передачу «{{ program.title }}»?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="icon-btn danger" type="submit" title="Удалить"><svg class="icon"><use href="#i-trash"/></svg></button>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+{% else %}
+  <section class="card empty-state large">
+    <svg class="icon"><use href="#i-tv"/></svg>
+    <h2>Пока нет ни одной передачи</h2>
+    <p class="muted">Создайте первую передачу, добавьте видео — и эфирный движок начнёт вещание автоматически.</p>
+    <a class="btn btn-primary" href="{{ url_for('admin.program_new') }}"><svg class="icon"><use href="#i-plus"/></svg>Создать передачу</a>
+  </section>
+{% endif %}
+{% endblock %}

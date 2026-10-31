@@ -1,0 +1,14 @@
+{% extends "public/base.html" %}
+{% block title %}{{ code }} — {{ channel_name or 'SIMPLE' }}{% endblock %}
+
+{% block content %}
+<section class="error-hero">
+  <span class="error-code">{{ code }}</span>
+  <h1>{{ message }}</h1>
+  <p class="muted">Проверьте адрес или вернитесь на страницу эфира.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('public.index') }}"><svg class="icon"><use href="#i-play"/></svg>К эфиру</a>
+    <a class="btn btn-ghost" href="{{ url_for('public.tv_guide') }}"><svg class="icon"><use href="#i-calendar"/></svg>Телепрограмма</a>
+  </div>
+</section>
+{% endblock %}

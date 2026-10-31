@@ -1,0 +1,39 @@
+<div class="simple-player public-player" data-player data-stream="{{ stream_url }}" data-now="{{ url_for('public.api_now') }}" data-heartbeat="{{ url_for('public.heartbeat') }}" data-mode="{{ mode }}">
+  <video id="simple-video" playsinline preload="auto" poster=""></video>
+  <div class="player-loading" data-player-loading><span class="spinner"></span><span>Подключение к эфиру…</span></div>
+  <div class="player-error" data-player-error hidden>
+    <svg class="icon"><use href="#i-warning"/></svg>
+    <span data-player-error-text>Поток недоступен</span>
+    <button class="btn btn-ghost btn-sm" type="button" data-player-retry>Повторить</button>
+  </div>
+  <div class="player-topline">
+    <span class="live-chip"><span class="dot"></span>LIVE</span>
+    <span class="player-clock" data-player-clock>--:--</span>
+  </div>
+  <div class="player-titlebar">
+    <span class="player-brand">{{ channel_name or 'SIMPLE' }}</span>
+    <span class="player-now" data-player-title>{{ current.title if current else 'Ожидание эфира' }}</span>
+    <span class="player-next" data-player-next>{{ ('Далее: ' ~ next.title) if next else '' }}</span>
+  </div>
+  <div class="player-controls" data-player-controls>
+    <button class="player-btn" type="button" data-player-play title="Пауза/воспроизведение" aria-label="Пауза или воспроизведение"><svg class="icon"><use href="#i-play"/></svg></button>
+    <div class="player-volume">
+      <button class="player-btn" type="button" data-player-mute title="Звук" aria-label="Звук"><svg class="icon"><use href="#i-volume"/></svg></button>
+      <input type="range" min="0" max="1" step="0.05" value="0.8" data-player-volume aria-label="Громкость">
+    </div>
+    <div class="player-progress">
+      <div class="player-progress-track"><span data-player-progress style="width: 0%"></span></div>
+      <span class="player-time" data-player-time>LIVE</span>
+    </div>
+    <button class="player-btn" type="button" data-player-fullscreen title="Полный экран" aria-label="Полный экран"><svg class="icon"><use href="#i-fullscreen"/></svg></button>
+  </div>
+</div>
+
+<svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 2 1 21h22zm0 4.3L19.6 19H4.4zM11 9h2v6h-2zm0 8h2v2h-2z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></symbol>
+  <symbol id="i-volume" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zm12.5-1.5a5 5 0 0 1 0 9v-2a3 3 0 0 0 0-5zm2-3a9 9 0 0 1 0 15v-2a7 7 0 0 0 0-11z"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zm12 1.4 2.1-2.1 1.4 1.4-2.1 2.1 2.1 2.1-1.4 1.4-2.1-2.1-2.1 2.1-1.4-1.4 2.1-2.1-2.1-2.1 1.4-1.4z"/></symbol>
+  <symbol id="i-fullscreen" viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zm10 0h6v6h-2V6h-4zM4 14h2v4h4v2H4zm14 0h2v6h-6v-2h4z"/></symbol>
+</svg>

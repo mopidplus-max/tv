@@ -1,0 +1,60 @@
+{% extends "public/base.html" %}
+{% block title %}{{ channel.name }} — телепрограмма{% endblock %}
+
+{% block content %}
+<section class="guide-hero">
+  <div>
+    <span class="eyebrow">Телепрограмма</span>
+    <h1>Сетка вещания на неделю</h1>
+    <p class="muted">Расписание обновляется автоматически. Время указано по локальному часовому поясу сервера.</p>
+  </div>
+  <div class="guide-now">
+    <span class="live-chip"><span class="dot"></span>СЕЙЧАС</span>
+    <strong>{{ current.title if current else 'Ожидание эфира' }}</strong>
+    <span class="muted">{{ fmt_time(now) }}</span>
+  </div>
+</section>
+
+<section class="card public-card">
+  <div class="card-head"><div><span class="eyebrow">Сегодня</span><h2>Сетка дня</h2></div></div>
+  {% if timeline %}
+    <div class="timeline">
+      {% for slot in timeline %}
+        <div class="timeline-slot {{ 'is-current' if slot.is_current }}" style="left: {{ slot.left }}%; width: {{ slot.width }}%" title="{{ slot.title }} · {{ slot.start_label }}–{{ slot.end_label }}">
+          <span>{{ slot.start_label }}</span><strong>{{ slot.title }}</strong>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="timeline-scale"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+  {% else %}
+    <p class="muted">На сегодня расписание не задано.</p>
+  {% endif %}
+</section>
+
+{% if days %}
+  <div class="guide-days">
+    {% for day in days %}
+      <section class="card public-card guide-day">
+        <div class="card-head">
+          <div><span class="eyebrow">{{ ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'][(day|to_datetime).weekday()] }}</span><h2>{{ fmt_dt(day|to_datetime, '%d.%m.%Y') }}</h2></div>
+          <span class="badge badge-muted">{{ grouped[day]|length }} передач</span>
+        </div>
+        <div class="guide-list">
+          {% for item in grouped[day] %}
+            <article class="guide-row {{ 'is-current' if item.start <= now < item.end }}">
+              <div class="guide-time">{{ item.start.strftime('%H:%M') }}<span>{{ item.end.strftime('%H:%M') }}</span></div>
+              <div class="guide-body">
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.description or 'Без описания' }}</p>
+              </div>
+              {% if item.start <= now < item.end %}<span class="badge badge-success">В эфире</span>{% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state public-empty"><svg class="icon"><use href="#i-calendar"/></svg><p>Телепрограмма пока не опубликована.</p></div>
+{% endif %}
+{% endblock %}

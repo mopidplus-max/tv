@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#080b10">
+  <title>{% block title %}{{ channel_name or 'SIMPLE' }} — прямой эфир{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('public.favicon') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/public.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="public-body" data-mode="{{ mode|default('on') }}">
+  <div class="public-bg" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="grid-glow"></span></div>
+  <svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M11 3h2v8.2l3.6-3.6L18 9l-6 6-6-6 1.4-1.4L11 11.2zM4 19h16v2H4z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M7 2v3M17 2v3M3.5 9h17M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm2 7h3v3H7zm5 0h3v3h-3zm5 0h2v3h-2zM7 16h3v3H7zm5 0h3v3h-3z"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><path d="M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zm5-4 3 3 3-3 1.4 1.4L13 7h-2L7.6 3.4zM9 11v5l5-2.5z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7-1.4-1.4L13.2 12 7.6 6.4z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-1 3v6l5 3 1-1.7-4-2.3V7z"/></symbol>
+  </svg>
+  <header class="public-header">
+    <a class="public-brand" href="{{ url_for('public.index') }}">
+      <span class="brand-mark">S</span>
+      <span><strong>{{ channel_name or 'SIMPLE' }}</strong><small>ПРЯМОЙ ЭФИР</small></span>
+    </a>
+    <nav class="public-nav" aria-label="Навигация">
+      <a href="{{ url_for('public.index') }}" class="{{ 'active' if request.endpoint == 'public.index' }}">Эфир</a>
+      <a href="{{ url_for('public.tv_guide') }}" class="{{ 'active' if request.endpoint == 'public.tv_guide' }}">Телепрограмма</a>
+      <a href="{{ url_for('public.playlist') }}">M3U</a>
+    </nav>
+  </header>
+
+  <main class="public-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="public-footer">
+    <div class="footer-brand"><span class="brand-mark small">S</span><span>{{ channel_name or 'SIMPLE' }} · {{ current_year }}</span></div>
+    <div class="footer-links">
+      <a href="{{ url_for('public.playlist') }}">Плейлист M3U</a>
+      <a href="{{ url_for('public.epg_xml') }}">EPG XML</a>
+      <a href="{{ url_for('public.epg_gz') }}">EPG GZ</a>
+    </div>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
