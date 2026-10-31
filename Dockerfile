@@ -31,10 +31,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN sed -i 's/\r$//' /app/docker-entrypoint.sh && chmod +x /app/docker-entrypoint.sh
 
-RUN mkdir -p /data/storage /data/hls /data/logs
+# The app runs as uid 1000 on hosting platforms that drop root, so the data
+# folders must belong to that user even when the volume is seeded from the image.
+RUN mkdir -p /data/storage /data/hls /data/logs \
+    && chown -R 1000:1000 /data
 
 # Keep the database, uploads, HLS segments and logs between restarts.
 VOLUME ["/data"]
+
+USER 1000:1000
 
 EXPOSE 5000
 
